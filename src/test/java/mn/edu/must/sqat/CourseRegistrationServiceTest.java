@@ -109,4 +109,29 @@ class CourseRegistrationServiceTest {
         assertEquals("OK", result);
         verify(repository).saveRegistration(STUDENT_ID, COURSE_ID);
     }
+
+    // A6 — аргумент тус бүрийн null-ийг ТУСАД нь шалгана
+    @Test
+    void register_nullArguments_throwsIllegalArgumentAndTouchesNoDependency() {
+        assertThrows(IllegalArgumentException.class, () -> service.register(null, COURSE_ID));
+        assertThrows(IllegalArgumentException.class, () -> service.register(STUDENT_ID, null));
+        assertThrows(IllegalArgumentException.class, () -> service.register(null, null));
+
+        verifyNoInteractions(repository, emailSender);
+    }
+
+    // A7
+    @Test
+    void register_success_emailBodyContainsCourseCode() {
+        when(repository.findStudent(STUDENT_ID)).thenReturn(activeStudent(List.of("CS101")));
+        when(repository.courseExists(COURSE_ID)).thenReturn(true);
+        when(repository.prerequisites(COURSE_ID)).thenReturn(List.of("CS101"));
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+
+        service.register(STUDENT_ID, COURSE_ID);
+
+        verify(emailSender).send(eq(EMAIL), anyString(), body.capture());
+        assertTrue(body.getValue().contains(COURSE_ID),
+                "И-мэйлийн бие хичээлийн кодыг агуулах ёстой, гэтэл: " + body.getValue());
+    }
 }
