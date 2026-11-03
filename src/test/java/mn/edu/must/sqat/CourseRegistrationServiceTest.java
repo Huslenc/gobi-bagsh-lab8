@@ -81,4 +81,32 @@ class CourseRegistrationServiceTest {
         assertEquals("ERROR_INACTIVE_STUDENT", result);
         verifyNoInteractions(emailSender);
     }
+
+    // A4
+    @Test
+    void register_missingPrerequisite_returnsErrorPrerequisitesAndDoesNotSave() {
+        when(repository.findStudent(STUDENT_ID)).thenReturn(activeStudent(List.of("CS101")));
+        when(repository.courseExists(COURSE_ID)).thenReturn(true);
+        when(repository.prerequisites(COURSE_ID)).thenReturn(List.of("CS101", "CS102"));
+
+        String result = service.register(STUDENT_ID, COURSE_ID);
+
+        assertEquals("ERROR_PREREQUISITES", result);
+        verify(repository, never()).saveRegistration(anyString(), anyString());
+    }
+
+    // A5
+    @Test
+    void register_emailSenderThrows_stillReturnsOkAndRegistrationSaved() {
+        when(repository.findStudent(STUDENT_ID)).thenReturn(activeStudent(List.of("CS101")));
+        when(repository.courseExists(COURSE_ID)).thenReturn(true);
+        when(repository.prerequisites(COURSE_ID)).thenReturn(List.of("CS101"));
+        doThrow(new RuntimeException("SMTP down"))
+                .when(emailSender).send(anyString(), anyString(), anyString());
+
+        String result = service.register(STUDENT_ID, COURSE_ID);
+
+        assertEquals("OK", result);
+        verify(repository).saveRegistration(STUDENT_ID, COURSE_ID);
+    }
 }
