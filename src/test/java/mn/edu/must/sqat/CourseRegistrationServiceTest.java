@@ -57,4 +57,28 @@ class CourseRegistrationServiceTest {
         verify(repository).saveRegistration(STUDENT_ID, COURSE_ID);
         verify(emailSender).send(eq(EMAIL), anyString(), anyString());
     }
+
+    // A2
+    @Test
+    void register_unknownStudent_returnsErrorNoStudentAndDoesNothingElse() {
+        when(repository.findStudent(STUDENT_ID)).thenReturn(null);
+
+        String result = service.register(STUDENT_ID, COURSE_ID);
+
+        assertEquals("ERROR_NO_STUDENT", result);
+        verify(repository, never()).saveRegistration(anyString(), anyString());
+        verifyNoInteractions(emailSender);
+    }
+
+    // A3
+    @Test
+    void register_inactiveStudent_returnsErrorInactiveAndNeverTouchesEmail() {
+        when(repository.findStudent(STUDENT_ID))
+                .thenReturn(new Student(STUDENT_ID, EMAIL, false, List.of("CS101")));
+
+        String result = service.register(STUDENT_ID, COURSE_ID);
+
+        assertEquals("ERROR_INACTIVE_STUDENT", result);
+        verifyNoInteractions(emailSender);
+    }
 }
