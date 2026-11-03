@@ -134,4 +134,28 @@ class CourseRegistrationServiceTest {
         assertTrue(body.getValue().contains(COURSE_ID),
                 "И-мэйлийн бие хичээлийн кодыг агуулах ёстой, гэтэл: " + body.getValue());
     }
+
+    // A8 — гурван алдааны анги, нэг параметржүүлсэн тест
+    @ParameterizedTest(name = "found={0}, active={1}, taken={2} -> {3}")
+    @CsvSource({
+            "false, true,  CS101, ERROR_NO_STUDENT",
+            "true,  false, CS101, ERROR_INACTIVE_STUDENT",
+            "true,  true,  NONE,  ERROR_PREREQUISITES"
+    })
+    void register_invalidScenario_returnsExpectedErrorAndNeverSavesOrEmails(
+            boolean found, boolean active, String taken, String expected) {
+        List<String> coursesTaken = taken.equals("NONE") ? List.of() : List.of(taken);
+        Student student = found ? new Student(STUDENT_ID, EMAIL, active, coursesTaken) : null;
+        // Мөр бүрд зарим stub ашиглагдахгүй (жишээ нь оюутан олдоогүй үед
+        // courseExists/prerequisites руу хүрэхгүй) тул lenient хэрэгтэй.
+        lenient().when(repository.findStudent(STUDENT_ID)).thenReturn(student);
+        lenient().when(repository.courseExists(COURSE_ID)).thenReturn(true);
+        lenient().when(repository.prerequisites(COURSE_ID)).thenReturn(List.of("CS101"));
+
+        String result = service.register(STUDENT_ID, COURSE_ID);
+
+        assertEquals(expected, result);
+        verify(repository, never()).saveRegistration(anyString(), anyString());
+        verifyNoInteractions(emailSender);
+    }
 }
